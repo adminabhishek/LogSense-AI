@@ -1,9 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from loguru import logger
 import sys
 import threading
 import time
+import os
 from app.api import metrics, logs, alerts, system, settings, chat, collector, client_metrics
 from app.database import init_db
 
@@ -25,6 +28,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve frontend static files
+static_path = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_path):
+    app.mount("/static", StaticFiles(directory=static_path), name="static")
+
+# Serve index.html for root path
+@app.get("/")
+async def serve_frontend():
+    index_path = os.path.join(static_path, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"message": "API running. Frontend not found."}
 
 app.include_router(metrics.router, prefix="/api/metrics", tags=["Metrics"])
 app.include_router(logs.router, prefix="/api/logs", tags=["Logs"])
