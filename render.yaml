@@ -6,7 +6,7 @@ services:
     branch: main
     plan: free
     dockerfilePath: backend/Dockerfile
-    dockerContextPath: backend
+    rootDirectory: backend
     envVars:
       - key: OPENAI_API_KEY
         sync: false
@@ -22,7 +22,7 @@ services:
     branch: main
     plan: free
     dockerfilePath: frontend/Dockerfile
-    dockerContextPath: frontend
+    rootDirectory: frontend
     envVars:
       - key: VITE_API_URL
         value: https://logsense-backend.onrender.com
