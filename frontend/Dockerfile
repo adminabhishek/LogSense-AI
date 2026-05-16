@@ -10,8 +10,8 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build without type checking (uses updated package.json)
-RUN npm run build
+# Build without type checking - use node directly to bypass permission issues
+RUN node node_modules/vite/bin/vite.js build
 
 # Production stage
 FROM nginx:alpine
