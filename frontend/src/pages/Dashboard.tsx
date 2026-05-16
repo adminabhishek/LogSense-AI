@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Cpu, HardDrive, MemoryStick, Clock, AlertTriangle, FileText, Sparkles } from 'lucide-react'
+import { Cpu, HardDrive, MemoryStick, Clock, AlertTriangle, FileText, Sparkles, Monitor, Smartphone, Tablet, Wifi, Battery, Globe, Loader2 } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { metricsApi, logsApi, alertsApi } from '@/services/api'
+import { useClientMetrics } from '@/hooks/useClientMetrics'
 import type { Metrics, LogEntry, Alert, MetricsHistory } from '@/types'
 import { formatDate, getLevelColor } from '@/utils'
 
@@ -16,6 +17,9 @@ export default function Dashboard() {
   const [recentLogs, setRecentLogs] = useState<LogEntry[]>([])
   const [recentAlerts, setRecentAlerts] = useState<Alert[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Client-side metrics - THIS IS WHAT CHANGES FOR EACH USER
+  const { metrics: clientMetrics, loading: clientLoading } = useClientMetrics()
 
   const fetchData = async () => {
     try {
@@ -53,14 +57,33 @@ export default function Dashboard() {
     { name: 'Available', value: metrics.memory_available },
   ] : []
 
-  const statCards = [
-    { icon: Cpu, label: 'CPU Usage', value: metrics?.cpu_percent.toFixed(1) || '0', unit: '%', color: 'from-purple-500 to-pink-500' },
-    { icon: MemoryStick, label: 'Memory', value: metrics?.memory_percent.toFixed(1) || '0', unit: '%', color: 'from-blue-500 to-cyan-500' },
-    { icon: HardDrive, label: 'Disk', value: metrics?.disk_percent.toFixed(1) || '0', unit: '%', color: 'from-emerald-500 to-teal-500' },
-    { icon: Clock, label: 'Uptime', value: metrics?.uptime || '0', unit: '', color: 'from-amber-500 to-orange-500' },
+  // Client-side stat cards - DIFFERENT FOR EACH USER
+  const clientStatCards = [
+    { icon: Monitor, label: 'Device Type', value: clientMetrics.deviceType || 'desktop', unit: '', color: 'from-purple-500 to-pink-500', iconComponent: clientMetrics.deviceType === 'mobile' ? Smartphone : clientMetrics.deviceType === 'tablet' ? Tablet : Monitor },
+    { icon: Cpu, label: 'CPU Cores', value: clientMetrics.cpuCores || 'N/A', unit: 'cores', color: 'from-blue-500 to-cyan-500', iconComponent: Cpu },
+    { icon: MemoryStick, label: 'Memory (RAM)', value: clientMetrics.memoryGb ? clientMetrics.memoryGb.toFixed(1) : 'N/A', unit: 'GB', color: 'from-emerald-500 to-teal-500', iconComponent: MemoryStick },
+    { icon: Globe, label: 'Screen', value: clientMetrics.screenWidth ? `${clientMetrics.screenWidth}×${clientMetrics.screenHeight}` : 'Detecting...', unit: '', color: 'from-amber-500 to-orange-500', iconComponent: Globe },
   ]
 
-  if (loading) {
+  const networkStatCards = [
+    { icon: Wifi, label: 'Network', value: clientMetrics.connectionType || 'Unknown', unit: '', color: 'from-cyan-500 to-blue-500' },
+    { icon: Battery, label: 'Battery', value: clientMetrics.batteryLevel !== null ? `${clientMetrics.batteryLevel}%` : 'N/A', unit: clientMetrics.batteryCharging ? ' (Charging)' : '', color: 'from-green-500 to-emerald-500' },
+    { icon: Globe, label: 'Browser', value: clientMetrics.browser, unit: '', color: 'from-orange-500 to-red-500' },
+    { icon: Clock, label: 'Page Load', value: clientMetrics.pageLoadTime ? `${(clientMetrics.pageLoadTime / 1000).toFixed(2)}s` : '...', unit: '', color: 'from-indigo-500 to-purple-500' },
+  ]
+
+  const getDeviceIcon = () => {
+    switch (clientMetrics.deviceType) {
+      case 'mobile': return Smartphone
+      case 'tablet': return Tablet
+      default: return Monitor
+    }
+  }
+  const DeviceIcon = getDeviceIcon()
+
+  const isLoading = loading || clientLoading
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="w-12 h-12 border-4 border-accent-primary border-t-transparent rounded-full animate-spin" />
@@ -73,7 +96,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-100">Dashboard</h1>
-          <p className="text-slate-400 mt-1">Real-time infrastructure monitoring</p>
+          <p className="text-slate-400 mt-1">Your device metrics in real-time</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="status-dot success" />
@@ -81,32 +104,103 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statCards.map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: i * 0.1 }}
-          >
-            <Card className="relative overflow-hidden">
-              <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${stat.color} opacity-10 rounded-full -translate-y-1/2 translate-x-1/2`} />
+      {/* CLIENT-SIDE METRICS - Different for each user/device */}
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0 }}
+      >
+        <Card className="bg-gradient-to-r from-accent-primary/10 via-accent-secondary/10 to-transparent border-accent-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DeviceIcon className="w-5 h-5 text-accent-primary" />
+              Your Device Metrics
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-slate-400 mb-4">
+              These metrics are from your device. Different users see different values based on their hardware.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {clientStatCards.map((stat, i) => (
+                <div key={stat.label} className="text-center p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                  <stat.iconComponent className={`w-6 h-6 mx-auto mb-2 ${stat.color.replace('from-', 'text-').replace(' to-', '')}`} />
+                  <p className="text-xs text-slate-500 mb-1">{stat.label}</p>
+                  <p className="text-lg font-bold text-slate-100 capitalize">
+                    {stat.value}<span className="text-xs text-slate-500">{stat.unit}</span>
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Additional Client Metrics Row */}
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.1 }}
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wifi className="w-5 h-5" />
+              Network & Battery Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {networkStatCards.map((stat, i) => (
+                <div key={stat.label} className="text-center p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                  <stat.icon className={`w-6 h-6 mx-auto mb-2 ${stat.color.replace('from-', 'text-').replace(' to-', '')}`} />
+                  <p className="text-xs text-slate-500 mb-1">{stat.label}</p>
+                  <p className="text-lg font-bold text-slate-100">
+                    {stat.value}<span className="text-xs text-slate-500">{stat.unit}</span>
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Operating System Info */}
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.15 }}
+      >
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center`}>
-                  <stat.icon className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                  <Monitor className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-400">{stat.label}</p>
-                  <p className="text-2xl font-bold text-slate-100">
-                    {stat.value}<span className="text-sm text-slate-500 ml-1">{stat.unit}</span>
+                  <p className="text-sm text-slate-400">Operating System</p>
+                  <p className="text-xl font-bold text-slate-100">{clientMetrics.os}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-sm text-slate-400">Browser</p>
+                  <p className="text-lg font-semibold text-slate-100">{clientMetrics.browser}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-slate-400">Session Duration</p>
+                  <p className="text-lg font-semibold text-slate-100">
+                    {Math.floor(clientMetrics.sessionDuration / 60)}m {clientMetrics.sessionDuration % 60}s
                   </p>
                 </div>
               </div>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
+      {/* Server metrics section - optional */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <motion.div
           initial={{ y: 20, opacity: 0 }}

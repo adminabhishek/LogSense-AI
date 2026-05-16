@@ -1,20 +1,42 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
-interface ClientMetricsData {
+export interface ClientMetricsData {
   browser: string
   os: string
-  screen_width: number
-  screen_height: number
-  device_type: string
-  cpu_cores: number | null
-  memory_gb: number | null
-  connection_type: string | null
-  page_url: string
-  session_duration: number
+  screenWidth: number
+  screenHeight: number
+  deviceType: string
+  cpuCores: number | null
+  memoryGb: number | null
+  connectionType: string | null
+  pageUrl: string
+  sessionDuration: number
+  pageLoadTime: number | null
+  batteryLevel: number | null
+  batteryCharging: boolean | null
 }
 
-export function useClientMetrics(apiUrl: string) {
+const defaultMetrics: ClientMetricsData = {
+  browser: 'Detecting...',
+  os: 'Detecting...',
+  screenWidth: 0,
+  screenHeight: 0,
+  deviceType: 'desktop',
+  cpuCores: null,
+  memoryGb: null,
+  connectionType: null,
+  pageUrl: '/',
+  sessionDuration: 0,
+  pageLoadTime: null,
+  batteryLevel: null,
+  batteryCharging: null
+}
+
+export function useClientMetrics(apiUrl?: string) {
+  const [metrics, setMetrics] = useState<ClientMetricsData>(defaultMetrics)
+  const [loading, setLoading] = useState(true)
   const startTime = useRef(Date.now())
+  const pageStartTime = useRef(performance.now())
 
   const getDeviceType = (): string => {
     const ua = navigator.userAgent
@@ -29,20 +51,24 @@ export function useClientMetrics(apiUrl: string) {
     if (ua.includes('Firefox')) return 'Firefox'
     if (ua.includes('Safari')) return 'Safari'
     if (ua.includes('Edge')) return 'Edge'
+    if (ua.includes('OPR')) return 'Opera'
     return 'Other'
   }
 
   const getOS = (): string => {
     const ua = navigator.userAgent
+    if (ua.includes('Windows 11')) return 'Windows 11'
     if (ua.includes('Windows')) return 'Windows'
+    if (ua.includes('Mac OS X')) return 'macOS'
     if (ua.includes('Mac')) return 'macOS'
     if (ua.includes('Linux')) return 'Linux'
     if (ua.includes('Android')) return 'Android'
-    if (ua.includes('iOS')) return 'iOS'
+    if (ua.includes('iPhone')) return 'iOS'
+    if (ua.includes('iPad')) return 'iOS'
     return 'Other'
   }
 
-  const getConnectionType = async (): Promise<string | null> => {
+  const getConnectionType = (): string | null => {
     try {
       // @ts-ignore - navigator.connection is not in TypeScript types
       const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection
@@ -52,48 +78,68 @@ export function useClientMetrics(apiUrl: string) {
     }
   }
 
-  const getCPUCores = async (): Promise<number | null> => {
+  const getBatteryInfo = async () => {
     try {
-      // @ts-ignore - hardwareConcurrency is not always available
-      return navigator.hardwareConcurrency || null
+      // @ts-ignore - Battery API is not in TypeScript types
+      if (navigator.getBattery) {
+        const battery = await navigator.getBattery()
+        return {
+          level: Math.round(battery.level * 100),
+          charging: battery.charging
+        }
+      }
     } catch {
-      return null
+      // Battery API not supported
     }
-  }
-
-  const getMemory = async (): Promise<number | null> => {
-    try {
-      // @ts-ignore - deviceMemory is not in TypeScript types
-      return navigator.deviceMemory || null
-    } catch {
-      return null
-    }
+    return { level: null, charging: null }
   }
 
   const collectMetrics = async () => {
     const sessionDuration = Math.floor((Date.now() - startTime.current) / 1000)
+    const pageLoadTime = Math.round(performance.now() - pageStartTime.current)
+    const batteryInfo = await getBatteryInfo()
 
-    const metrics: ClientMetricsData = {
+    const newMetrics: ClientMetricsData = {
       browser: getBrowser(),
       os: getOS(),
-      screen_width: window.screen.width,
-      screen_height: window.screen.height,
-      device_type: getDeviceType(),
-      cpu_cores: await getCPUCores(),
-      memory_gb: await getMemory(),
-      connection_type: await getConnectionType(),
-      page_url: window.location.pathname,
-      session_duration: sessionDuration
+      screenWidth: window.screen.width,
+      screenHeight: window.screen.height,
+      deviceType: getDeviceType(),
+      cpuCores: navigator.hardwareConcurrency || null,
+      memoryGb: (navigator as any).deviceMemory || null,
+      connectionType: getConnectionType(),
+      pageUrl: window.location.pathname,
+      sessionDuration,
+      pageLoadTime,
+      batteryLevel: batteryInfo.level,
+      batteryCharging: batteryInfo.charging
     }
 
-    try {
-      await fetch(`${apiUrl}/api/client-metrics`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(metrics)
-      })
-    } catch (error) {
-      console.error('Failed to send client metrics:', error)
+    setMetrics(newMetrics)
+    setLoading(false)
+
+    // Send to backend if URL provided
+    if (apiUrl) {
+      try {
+        await fetch(`${apiUrl}/api/client-metrics`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            browser: newMetrics.browser,
+            os: newMetrics.os,
+            screen_width: newMetrics.screenWidth,
+            screen_height: newMetrics.screenHeight,
+            device_type: newMetrics.deviceType,
+            cpu_cores: newMetrics.cpuCores,
+            memory_gb: newMetrics.memoryGb,
+            connection_type: newMetrics.connectionType,
+            page_url: newMetrics.pageUrl,
+            session_duration: newMetrics.sessionDuration
+          })
+        })
+      } catch (error) {
+        console.error('Failed to send client metrics:', error)
+      }
     }
   }
 
@@ -104,7 +150,7 @@ export function useClientMetrics(apiUrl: string) {
     // Re-collect every 30 seconds
     const interval = setInterval(collectMetrics, 30000)
 
-    // Collect on page unload (before user leaves)
+    // Collect on page unload
     const handleBeforeUnload = () => {
       collectMetrics()
     }
@@ -115,4 +161,6 @@ export function useClientMetrics(apiUrl: string) {
       window.removeEventListener('beforeunload', handleBeforeUnload)
     }
   }, [apiUrl])
+
+  return { metrics, loading }
 }
