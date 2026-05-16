@@ -6,17 +6,17 @@ WORKDIR /frontend
 # Copy package files first
 COPY frontend/package*.json ./
 
-# Install dependencies
+# Install dependencies as root
 RUN npm ci
 
 # Copy source code
 COPY frontend/ .
 
-# IMPORTANT: Update package.json to skip type checking
-RUN sed -i 's/"build": "tsc && vite build"/"build": "vite build"/' package.json
+# Fix all permissions for node_modules/.bin
+RUN chmod -R 755 node_modules/.bin/
 
-# Build without type checking
-RUN npm run build
+# Build without type checking (using npx to avoid permission issues)
+RUN npx vite build
 
 # Stage 2: Backend
 FROM python:3.11-slim
@@ -45,7 +45,9 @@ WORKDIR /app/backend
 
 EXPOSE 8000
 
+# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]s
+# Run the application
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
