@@ -4,7 +4,7 @@ from loguru import logger
 import sys
 import threading
 import time
-from app.api import metrics, logs, alerts, system, settings, chat, collector
+from app.api import metrics, logs, alerts, system, settings, chat, collector, client_metrics
 from app.database import init_db
 
 monitoring_running = False
@@ -33,6 +33,7 @@ app.include_router(system.router, prefix="/api/system", tags=["System"])
 app.include_router(settings.router, prefix="/api/settings", tags=["Settings"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(collector.router, prefix="/api/collector", tags=["Collector"])
+app.include_router(client_metrics.router, prefix="/api/client-metrics", tags=["ClientMetrics"])
 
 
 def monitoring_worker():

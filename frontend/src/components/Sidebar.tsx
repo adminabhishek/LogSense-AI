@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { LayoutDashboard, FileText, Brain, Bell, Server, Settings, MessageSquare } from 'lucide-react'
+import { LayoutDashboard, FileText, Brain, Bell, Server, Settings, MessageSquare, Monitor } from 'lucide-react'
 import { cn } from '@/utils'
 
 const navItems = [
@@ -9,6 +9,7 @@ const navItems = [
   { path: '/analysis', icon: Brain, label: 'AI Analysis' },
   { path: '/alerts', icon: Bell, label: 'Alerts' },
   { path: '/system', icon: Server, label: 'System' },
+  { path: '/clients', icon: Monitor, label: 'Client Devices' },
   { path: '/assistant', icon: MessageSquare, label: 'Assistant' },
   { path: '/settings', icon: Settings, label: 'Settings' },
 ]

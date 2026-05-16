@@ -8,8 +8,17 @@ import Alerts from '@/pages/Alerts'
 import SystemDetails from '@/pages/SystemDetails'
 import Settings from '@/pages/Settings'
 import AIAssistant from '@/pages/AIAssistant'
+import ClientMetrics from '@/pages/ClientMetrics'
+import { useClientMetrics } from '@/hooks/useClientMetrics'
+
+const API_BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : '/api'
 
 function App() {
+  // Track client-side metrics
+  useClientMetrics(API_BASE)
+
   return (
     <BrowserRouter>
       <Routes>
@@ -21,6 +30,7 @@ function App() {
           <Route path="system" element={<SystemDetails />} />
           <Route path="settings" element={<Settings />} />
           <Route path="assistant" element={<AIAssistant />} />
+          <Route path="clients" element={<ClientMetrics />} />
         </Route>
       </Routes>
       <Toaster />

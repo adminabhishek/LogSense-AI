@@ -79,3 +79,22 @@ export const chatApi = {
       body: JSON.stringify({ message, context }),
     }),
 }
+
+interface ClientMetric {
+  id: number
+  timestamp: string
+  browser: string
+  os: string
+  screen_width: number
+  screen_height: number
+  device_type: string
+  cpu_cores: number | null
+  memory_gb: number | null
+  connection_type: string | null
+  page_url: string
+  session_duration: number
+}
+
+export const clientMetricsApi = {
+  getClientMetrics: () => fetchJson<ClientMetric[]>('/client-metrics'),
+}
