@@ -2,19 +2,29 @@ services:
   - type: web
     name: logsense-backend
     runtime: docker
-    dockerfilePath: ./backend/Dockerfile
-    dockerContextPath: ./backend
+    repo: https://github.com/adminabhishek/LogSense-AI
+    branch: main
+    plan: free
+    dockerfilePath: backend/Dockerfile
+    dockerContextPath: backend
     envVars:
       - key: OPENAI_API_KEY
         sync: false
+      - key: PYTHONUNBUFFERED
+        value: "1"
     healthCheckPath: /health
+    autoDeploy: true
 
   - type: web
     name: logsense-frontend
     runtime: docker
-    dockerfilePath: ./frontend/Dockerfile
-    dockerContextPath: ./frontend
+    repo: https://github.com/adminabhishek/LogSense-AI
+    branch: main
+    plan: free
+    dockerfilePath: frontend/Dockerfile
+    dockerContextPath: frontend
     envVars:
       - key: VITE_API_URL
         value: https://logsense-backend.onrender.com
     healthCheckPath: /
+    autoDeploy: true
