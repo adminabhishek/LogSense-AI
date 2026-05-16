@@ -1,6 +1,9 @@
 import type { Metrics, MetricsHistory, LogEntry, LogAnalysis, Alert, Settings, SystemInfo, ChatResponse } from '@/types'
 
-const API_BASE = '/api'
+// ✅ FIXED: Use environment variable if available, fallback to relative path for local dev
+const API_BASE = import.meta.env.VITE_API_URL 
+  ? `${import.meta.env.VITE_API_URL}/api` 
+  : '/api'
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${url}`, {
