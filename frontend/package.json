@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "build": "vite build",
+    "preview": "vite preview",\n    "build:check": "tsc && vite build"
   },
   "dependencies": {
     "react": "^18.2.0",
