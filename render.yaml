@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: logsense-backend
+    runtime: image
+    image:
+      url: python:3.11-slim
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    rootDir: backend
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PYTHONPATH
+        value: /opt/render/project/src/backend
+    healthCheckPath: /health
+
+  - type: web
+    name: logsense-frontend
+    runtime: image
+    image:
+      url: node:18-alpine
+    buildCommand: npm install && npm run build
+    startCommand: npm run preview -- --port 80 --host 0.0.0.0
+    rootDir: frontend
+    envVars:
+      - key: VITE_API_URL
+        value: https://logsense-backend.onrender.com
