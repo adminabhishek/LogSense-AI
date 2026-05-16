@@ -1,0 +1,23 @@
+[2024-01-15T10:30:45.123] [INFO] Application started successfully
+[2024-01-15T10:30:46.456] [INFO] Database connection established
+[2024-01-15T10:30:47.789] [INFO] Server listening on port 8000
+[2024-01-15T10:31:00.000] [WARNING] High memory usage detected: 85%
+[2024-01-15T10:31:15.123] [INFO] Request received: GET /api/metrics
+[2024-01-15T10:31:15.456] [INFO] Response sent: 200 OK
+[2024-01-15T10:32:00.000] [ERROR] Database connection timeout
+[2024-01-15T10:32:01.000] [WARNING] Retrying database connection...
+[2024-01-15T10:32:02.000] [INFO] Database connection restored
+[2024-01-15T10:33:00.000] [WARNING] CPU usage spike: 92%
+[2024-01-15T10:33:30.000] [INFO] Request received: POST /api/logs/upload
+[2024-01-15T10:33:31.000] [INFO] Log file uploaded: sample.log
+[2024-01-15T10:34:00.000] [ERROR] Authentication failed for user admin
+[2024-01-15T10:34:05.000] [WARNING] Multiple failed login attempts detected
+[2024-01-15T10:35:00.000] [INFO] Scheduled task completed: backup
+[2024-01-15T10:36:00.000] [DEBUG] Cache cleared successfully
+[2024-01-15T10:37:00.000] [INFO] Health check passed
+[2024-01-15T10:38:00.000] [WARNING] Disk space running low: 85%
+[2024-01-15T10:39:00.000] [ERROR] API rate limit exceeded
+[2024-01-15T10:40:00.000] [INFO] Rate limit reset
+[2024-01-15T10:41:00.000] [INFO] New client connected: 192.168.1.100
+[2024-01-15T10:42:00.000] [DEBUG] Request headers: {"user-agent": "Mozilla/5.0"}
+[2024-01-15T10:43:00.000] [INFO] Request completed in 45ms
