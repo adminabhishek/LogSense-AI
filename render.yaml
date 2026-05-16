@@ -2,8 +2,6 @@ services:
   - type: web
     name: logsense-backend
     runtime: docker
-    repo: https://github.com/adminabhishek/LogSense-AI
-    branch: main
     dockerfilePath: ./backend/Dockerfile
     dockerContextPath: ./backend
     envVars:
@@ -14,8 +12,6 @@ services:
   - type: web
     name: logsense-frontend
     runtime: docker
-    repo: https://github.com/adminabhishek/LogSense-AI
-    branch: main
     dockerfilePath: ./frontend/Dockerfile
     dockerContextPath: ./frontend
     envVars:
