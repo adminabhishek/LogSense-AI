@@ -1,4 +1,4 @@
-﻿# Frontend Dockerfile - Skip type checking
+﻿# Frontend Dockerfile
 FROM node:18-alpine AS builder
 
 WORKDIR /app
@@ -7,10 +7,13 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
+# Copy environment file
+COPY .env.production ./
+
 # Copy source code
 COPY . .
 
-# Build without type checking - use node directly to bypass permission issues
+# Build with production environment
 RUN node node_modules/vite/bin/vite.js build
 
 # Production stage
