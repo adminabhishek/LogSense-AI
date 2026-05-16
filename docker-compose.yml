@@ -1,9 +1,10 @@
+# docker-compose.yml - Matching your GitHub structure
 version: '3.8'
 
 services:
-  backend:
+  backend:                    # ← Service name (used by docker-compose)
     build: ./backend
-    container_name: ai-infra-backend
+    container_name: ai-infra-backend    # ← Container name (optional, for Docker)
     ports:
       - "8000:8000"
     volumes:
@@ -11,20 +12,30 @@ services:
       - ai-infra-data:/app/data
     environment:
       - PYTHONUNBUFFERED=1
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     restart: unless-stopped
+    networks:
+      - ai-infra-network
 
-  frontend:
+  frontend:                   # ← Service name (used by docker-compose)
     build: ./frontend
-    container_name: ai-infra-frontend
+    container_name: ai-infra-frontend   # ← Container name (optional)
     ports:
       - "5173:5173"
     volumes:
       - ./frontend/src:/app/src
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=http://backend:8000    # ← Uses SERVICE name, not container name
     depends_on:
       - backend
     restart: unless-stopped
+    networks:
+      - ai-infra-network
+
+networks:
+  ai-infra-network:
+    driver: bridge
 
 volumes:
   ai-infra-data:
+    driver: local

@@ -1,5 +1,5 @@
 import { ReactNode } from 'react'
-import { CheckCircle, AlertTriangle, Info, XCircle, Cpu, HardDrive, Activity, Zap } from 'lucide-react'
+import { CheckCircle, AlertTriangle, Info, Cpu, HardDrive, Activity, Zap } from 'lucide-react'
 
 interface SectionProps {
   title?: string
@@ -26,14 +26,14 @@ export function ResponseSection({ title, icon, children, variant = 'default' }: 
   }
 
   return (
-    <div className={`border rounded-lg p-4 ${variantStyles[variant]}`}>
+    <div className={`border rounded-lg py-2 px-3 ${variantStyles[variant]}`}>
       {(title || icon) && (
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-1">
           {icon && <span className={iconColors[variant]}>{icon}</span>}
-          {title && <h4 className={`font-semibold ${iconColors[variant]}`}>{title}</h4>}
+          {title && <h4 className={`text-sm font-semibold ${iconColors[variant]}`}>{title}</h4>}
         </div>
       )}
-      <div className="text-slate-300">{children}</div>
+      <div className="text-slate-300 text-sm">{children}</div>
     </div>
   )
 }
@@ -61,9 +61,9 @@ export function ResponseListItem({ children, variant = 'default' }: ListItemProp
   }
 
   return (
-    <div className="flex items-start gap-2 py-1">
-      <span className={`${colors[variant]} mt-0.5`}>{bullets[variant]}</span>
-      <span className="text-slate-300">{children}</span>
+    <div className="flex items-start gap-1.5 py-0.5">
+      <span className={`${colors[variant]} text-xs mt-0.5`}>{bullets[variant]}</span>
+      <span className="text-slate-300 text-sm leading-tight">{children}</span>
     </div>
   )
 }
@@ -117,23 +117,33 @@ export function AIResponseRenderer({ content }: Props) {
   const lines = content.split('\n')
   const elements: ReactNode[] = []
   let currentSection: { title?: string; items: string[]; variant?: SectionProps['variant'] } | null = null
-  let inList = false
+  let lastTitle = ''
+  const seenTitles = new Set<string>()
+
+  const isDuplicateTitle = (title: string): boolean => {
+    const normalized = title.toLowerCase().trim()
+    if (seenTitles.has(normalized)) return true
+    seenTitles.add(normalized)
+    return false
+  }
 
   const flushSection = () => {
     if (currentSection) {
-      if (currentSection.title) {
+      const section = currentSection
+      if (section.title && section.title !== lastTitle && section.items.length > 0) {
+        lastTitle = section.title
         elements.push(
-          <ResponseSection key={elements.length} title={currentSection.title} variant={currentSection.variant}>
-            {currentSection.items.map((item, i) => (
-              <ResponseListItem key={i} variant={currentSection.variant}>{item}</ResponseListItem>
+          <ResponseSection key={elements.length} title={section.title} variant={section.variant}>
+            {section.items.map((item, i) => (
+              <ResponseListItem key={i} variant={section.variant}>{item}</ResponseListItem>
             ))}
           </ResponseSection>
         )
-      } else {
+      } else if (section.items.length > 0) {
         elements.push(
           <div key={elements.length} className="space-y-1">
-            {currentSection.items.map((item, i) => (
-              <ResponseListItem key={i} variant={currentSection.variant}>{item}</ResponseListItem>
+            {section.items.map((item, i) => (
+              <ResponseListItem key={i} variant={section.variant}>{item}</ResponseListItem>
             ))}
           </div>
         )
@@ -176,22 +186,23 @@ export function AIResponseRenderer({ content }: Props) {
 
     if (!line) {
       flushSection()
-      inList = false
       continue
     }
 
     if (line.match(/^#{1,3}\s/)) {
       flushSection()
       const title = line.replace(/^#{1,3}\s/, '')
-      currentSection = { title, items: [], variant: detectSectionVariant(title) }
-      elements.push(
-        <div key={elements.length} className="mt-4 first:mt-0">
-          <div className="flex items-center gap-2 mb-2">
-            {getSectionIcon(title)}
-            <h3 className="font-semibold text-slate-100">{title}</h3>
+      if (!isDuplicateTitle(title)) {
+        currentSection = { title, items: [], variant: detectSectionVariant(title) }
+        elements.push(
+          <div key={elements.length} className="mt-4 first:mt-0">
+            <div className="flex items-center gap-2 mb-2">
+              {getSectionIcon(title)}
+              <h3 className="font-semibold text-slate-100">{title}</h3>
+            </div>
           </div>
-        </div>
-      )
+        )
+      }
       continue
     }
 
@@ -199,7 +210,10 @@ export function AIResponseRenderer({ content }: Props) {
     if (sectionKeywords.some(kw => line.toLowerCase().startsWith(kw.toLowerCase()))) {
       flushSection()
       const title = line.replace(/^##\s*/, '').replace(/:$/, '')
-      currentSection = { title, items: [], variant: detectSectionVariant(title) }
+      if (!isDuplicateTitle(title)) {
+        lastTitle = title
+        currentSection = { title, items: [], variant: detectSectionVariant(title) }
+      }
       continue
     }
 
@@ -208,7 +222,6 @@ export function AIResponseRenderer({ content }: Props) {
         currentSection = { items: [], variant: 'default' }
       }
       currentSection.items.push(line.replace(/^[-*•\d\.\)]+\s*/, ''))
-      inList = true
       continue
     }
 
@@ -224,10 +237,12 @@ export function AIResponseRenderer({ content }: Props) {
       const [key, ...valueParts] = line.split(':')
       const value = valueParts.join(':').trim()
       if (value) {
+        const variant = detectVariant(value)
+        const textColor = variant === 'error' ? 'text-red-400' : variant === 'warning' ? 'text-amber-400' : 'text-slate-200'
         elements.push(
           <div key={elements.length} className="flex items-center gap-2 py-1 text-sm">
             <span className="text-slate-500">{key}:</span>
-            <span className={`font-medium ${detectVariant(value).includes('error') ? 'text-red-400' : detectVariant(value).includes('warning') ? 'text-amber-400' : 'text-slate-200'}`}>
+            <span className={`font-medium ${textColor}`}>
               {value}
             </span>
           </div>
@@ -243,7 +258,7 @@ export function AIResponseRenderer({ content }: Props) {
     } else {
       if (line.length > 0) {
         elements.push(
-          <p key={elements.length} className="text-slate-300 py-1">{line}</p>
+          <p key={elements.length} className="text-slate-300 py-1 text-sm">{line}</p>
         )
       }
     }

@@ -36,18 +36,17 @@ def set_ai_config(provider: str, api_key: str, model: str):
     minimax_client = None
 
 
-LOG_ANALYSIS_PROMPT = """You are an expert DevOps and infrastructure analyst. Analyze the following logs and provide a comprehensive analysis.
+LOG_ANALYSIS_PROMPT = """Analyze these logs briefly and concisely:
 
-Logs to analyze:
 {logs}
 
-Provide your analysis in the following JSON format:
+Respond in this JSON format (keep answers short):
 {{
-    "summary": "A brief 2-3 sentence summary of the overall log health",
-    "issues": ["List of specific issues found in the logs"],
-    "severity_breakdown": {{"INFO": count, "WARNING": count, "ERROR": count}},
-    "root_causes": ["List of likely root causes for any errors/warnings"],
-    "recommendations": ["Actionable recommendations to address issues"]
+    "summary": "1-2 sentences max",
+    "issues": ["only the top 3"],
+    "severity_breakdown": {{"INFO": 0, "WARNING": 0, "ERROR": 0}},
+    "root_causes": ["just 1-2 top causes"],
+    "recommendations": ["just 1-2 actions"]
 }}
 
 Return ONLY valid JSON without any additional text.
@@ -67,7 +66,7 @@ Provide a helpful, detailed response. If you need more specific information, men
 async def analyze_logs_with_ai(logs: List[str]) -> LogAnalysisResponse:
     global AI_PROVIDER
 
-    logs_text = "\n".join([f"- {log}" for log in logs[:100]])
+    logs_text = "\n".join([f"- {log}" for log in logs[:30]])
     prompt = LOG_ANALYSIS_PROMPT.format(logs=logs_text)
 
     if AI_PROVIDER == "openai":
@@ -158,7 +157,8 @@ async def analyze_with_minimax(prompt: str) -> LogAnalysisResponse:
                 json={
                     "model": MODEL if MODEL else MINIMAX_DEFAULT_MODEL,
                     "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.3
+                    "temperature": 0.3,
+                    "max_tokens": 800
                 },
                 headers={
                     "Authorization": f"Bearer {API_KEY}",
@@ -206,7 +206,8 @@ async def analyze_with_opencode(prompt: str) -> LogAnalysisResponse:
                 json={
                     "model": MODEL if MODEL else OPENCODE_DEFAULT_MODEL,
                     "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.3
+                    "temperature": 0.3,
+                    "max_tokens": 800
                 },
                 headers={
                     "Authorization": f"Bearer {API_KEY}",
@@ -344,7 +345,8 @@ async def chat_with_minimax(prompt: str, context_used: List[str]) -> ChatRespons
                 json={
                     "model": MODEL if MODEL else MINIMAX_DEFAULT_MODEL,
                     "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.7
+                    "temperature": 0.7,
+                    "max_tokens": 800
                 },
                 headers={
                     "Authorization": f"Bearer {API_KEY}",
@@ -387,7 +389,8 @@ async def chat_with_opencode(prompt: str, context_used: List[str]) -> ChatRespon
                 json={
                     "model": MODEL if MODEL else OPENCODE_DEFAULT_MODEL,
                     "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.7
+                    "temperature": 0.7,
+                    "max_tokens": 800
                 },
                 headers={
                     "Authorization": f"Bearer {API_KEY}",

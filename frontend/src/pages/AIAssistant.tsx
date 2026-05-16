@@ -55,86 +55,94 @@ export default function AIAssistant() {
   }
 
   return (
-    <div className="space-y-6 h-[calc(100vh-8rem)]">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-100">AI Assistant</h1>
-        <p className="text-slate-400 mt-1">Chat with AI about your infrastructure</p>
+    <div className="h-screen flex flex-col p-4 pt-0">
+      {/* Header */}
+      <div className="flex-shrink-0 py-4">
+        <h1 className="text-2xl font-bold text-slate-100">AI Assistant</h1>
+        <p className="text-slate-400 text-sm">Chat with AI about your infrastructure</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-full">
+      {/* Main Content - Full Height */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 min-h-0">
         <motion.div
           initial={{ x: -20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
-          className="lg:col-span-3"
+          className="lg:col-span-3 flex flex-col min-h-0"
         >
-          <Card className="h-full flex flex-col border-slate-800">
-            <CardHeader className="flex-shrink-0 border-b border-slate-800 bg-slate-900/50">
+          <Card className="flex flex-col border-slate-800 min-h-0 flex-1">
+            <CardHeader className="flex-shrink-0 border-b border-slate-800 bg-slate-900/50 py-3">
               <CardTitle className="flex items-center gap-2">
                 <MessageCircle className="w-5 h-5 text-accent-primary" />
                 <span className="text-slate-100">Chat</span>
                 <span className="ml-auto text-xs text-slate-500">Powered by AI</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex-1 flex flex-col overflow-hidden p-0">
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900/30">
-                {messages.map((msg, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ y: 10, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`max-w-[85%] ${
-                      msg.role === 'user'
-                        ? 'bg-gradient-to-r from-accent-primary to-accent-secondary text-white p-4 rounded-2xl'
-                        : 'bg-slate-800/80 border border-slate-700/50 text-slate-200 p-4 rounded-xl'
-                    }`}>
-                      {msg.role === 'assistant' && (
-                        <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-700/50">
-                          <Sparkles className="w-4 h-4 text-accent-primary" />
-                          <span className="text-xs font-medium text-accent-primary">AI Response</span>
-                        </div>
-                      )}
-                      {msg.role === 'user' ? (
-                        <p className="text-sm leading-relaxed">{msg.content}</p>
-                      ) : (
-                        <AIResponseRenderer content={msg.content} />
-                      )}
+
+            {/* Messages Area - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900/30 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+              {messages.map((msg, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ y: 10, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  {msg.role === 'user' ? (
+                    <div className="max-w-[85%] bg-gradient-to-r from-accent-primary to-accent-secondary text-white px-4 py-3 rounded-2xl">
+                      <p className="text-sm leading-relaxed">{msg.content}</p>
                     </div>
-                  </motion.div>
-                ))}
-                {loading && (
-                  <div className="flex justify-start">
-                    <div className="bg-slate-800/80 border border-slate-700/50 p-4 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <Loader2 className="w-5 h-5 text-accent-primary animate-spin" />
-                        <span className="text-sm text-slate-400">Analyzing and generating response...</span>
+                  ) : (
+                    <div className="w-full text-slate-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="w-4 h-4 text-accent-primary" />
+                        <span className="text-xs font-medium text-accent-primary">AI Response</span>
                       </div>
+                      <AIResponseRenderer content={msg.content} />
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="bg-slate-800/80 border border-slate-700/50 px-4 py-3 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <Loader2 className="w-5 h-5 text-accent-primary animate-spin" />
+                      <span className="text-sm text-slate-400">Analyzing and generating response...</span>
                     </div>
                   </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
 
-              <div className="flex-shrink-0 p-4 border-t border-slate-800 bg-slate-900/50">
-                <div className="flex gap-3">
-                  <Input
+            {/* Sticky Input Area */}
+            <div className="flex-shrink-0 p-4 border-t border-slate-800 bg-slate-900/50">
+              <div className="flex gap-3 items-end">
+                <div className="flex-1 relative">
+                  <textarea
                     placeholder="Ask about your infrastructure..."
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-                    className="flex-1 bg-slate-800 border-slate-700"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        sendMessage()
+                      }
+                    }}
+                    rows={1}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 resize-none focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
+                    style={{ minHeight: '48px', maxHeight: '120px' }}
                   />
-                  <Button
-                    onClick={() => sendMessage()}
-                    disabled={loading || !input.trim()}
-                    className="bg-accent-primary hover:bg-accent-primary/90"
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
                 </div>
+                <Button
+                  onClick={() => sendMessage()}
+                  disabled={loading || !input.trim()}
+                  className="bg-accent-primary hover:bg-accent-primary/90 px-4 h-12"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
               </div>
-            </CardContent>
+            </div>
           </Card>
         </motion.div>
 
@@ -142,7 +150,7 @@ export default function AIAssistant() {
           initial={{ x: 20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="space-y-4"
+          className="flex flex-col gap-4 min-h-0"
         >
           <Card className="border-slate-800">
             <CardHeader className="bg-slate-900/50 border-b border-slate-800">
