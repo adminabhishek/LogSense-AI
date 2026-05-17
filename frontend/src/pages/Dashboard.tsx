@@ -1,41 +1,48 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { Cpu, HardDrive, MemoryStick, Clock, AlertTriangle, FileText, Sparkles, Monitor, Smartphone, Tablet, Wifi, Battery, Globe, Loader2 } from 'lucide-react'
+import { Cpu, HardDrive, MemoryStick, Clock, AlertTriangle, FileText, Sparkles, Monitor, Smartphone, Tablet, Wifi, Battery, Globe, Loader2, Upload, Trash2 } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { metricsApi, logsApi, alertsApi } from '@/services/api'
+import { metricsApi } from '@/services/api'
 import { useClientMetrics } from '@/hooks/useClientMetrics'
-import type { Metrics, LogEntry, Alert, MetricsHistory } from '@/types'
-import { formatDate, getLevelColor } from '@/utils'
+import { useClientLogs } from '@/hooks/useClientLogs'
+import type { Metrics, MetricsHistory } from '@/types'
 
 const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b']
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null)
   const [history, setHistory] = useState<MetricsHistory | null>(null)
-  const [recentLogs, setRecentLogs] = useState<LogEntry[]>([])
-  const [recentAlerts, setRecentAlerts] = useState<Alert[]>([])
   const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
 
   // Client-side metrics - THIS IS WHAT CHANGES FOR EACH USER
   const { metrics: clientMetrics, loading: clientLoading } = useClientMetrics()
+
+  // Client-side uploaded logs - each user has their own
+  const { uploadedLogs, loading: logsLoading, uploadLogFile, clearLogs, getAllEntries } = useClientLogs()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      await uploadLogFile(file)
+    }
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   // Client-side performance history (simulated from browser APIs)
   const [clientHistory, setClientHistory] = useState<{time: string, cpu: number, memory: number}[]>([])
 
   const fetchData = async () => {
     try {
-      const [metricsData, historyData, logsData, alertsData] = await Promise.all([
+      const [metricsData, historyData] = await Promise.all([
         metricsApi.getMetrics(),
         metricsApi.getHistory(),
-        logsApi.getLogs({ limit: 10 }),
-        alertsApi.getAlerts(true),
       ])
       setMetrics(metricsData)
       setHistory(historyData)
-      setRecentLogs(logsData.logs)
-      setRecentAlerts(alertsData.slice(0, 5))
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
     } finally {
@@ -325,21 +332,67 @@ export default function Dashboard() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5" />
-                Recent Logs
+                Your Logs
               </CardTitle>
+              <div className="flex gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".log,.txt"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={logsLoading}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 disabled:opacity-50"
+                >
+                  <Upload className="w-3 h-3" />
+                  {logsLoading ? 'Uploading...' : 'Upload'}
+                </button>
+                {uploadedLogs.length > 0 && (
+                  <button
+                    onClick={clearLogs}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Clear
+                  </button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {recentLogs.length === 0 ? (
-                  <p className="text-slate-500 text-sm">No logs available</p>
-                ) : (
-                  recentLogs.slice(0, 5).map((log) => (
-                    <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg bg-background-secondary/50">
-                      <Badge variant={getLevelColor(log.level)}>{log.level}</Badge>
-                      <span className="flex-1 text-sm text-slate-300 truncate">{log.message}</span>
-                      <span className="text-xs text-slate-500">{formatDate(log.timestamp)}</span>
+              {/* Show uploaded logs */}
+              {getAllEntries().length > 0 && (
+                <div className="mb-4 p-3 bg-slate-800/50 rounded-lg">
+                  <p className="text-xs text-slate-400 mb-2">Uploaded Logs</p>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {getAllEntries().slice(0, 5).map((entry, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        <Badge variant={
+                          entry.level === 'ERROR' ? 'error' :
+                          entry.level === 'WARNING' ? 'warning' : 'info'
+                        }>{entry.level}</Badge>
+                        <span className="flex-1 text-slate-300 truncate">{entry.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Show console logs */}
+              <div className="space-y-2">
+                {clientMetrics.logs && clientMetrics.logs.length > 0 ? (
+                  clientMetrics.logs.slice().reverse().slice(0, 3).map((log) => (
+                    <div key={log.id} className="flex items-center gap-2 p-2 rounded bg-background-secondary/30 text-xs">
+                      <Badge variant={
+                        log.level === 'ERROR' ? 'error' :
+                        log.level === 'WARNING' ? 'warning' : 'info'
+                      }>{log.level}</Badge>
+                      <span className="flex-1 text-slate-400 truncate">{log.message}</span>
                     </div>
                   ))
+                ) : (
+                  <p className="text-slate-500 text-xs">Upload .log/.txt files or use console.log() to generate logs.</p>
                 )}
               </div>
             </CardContent>
@@ -355,26 +408,46 @@ export default function Dashboard() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5" />
-                Active Alerts
+                Device Alerts
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {recentAlerts.length === 0 ? (
-                  <div className="flex items-center gap-3 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                      <Sparkles className="w-4 h-4 text-emerald-400" />
-                    </div>
-                    <p className="text-sm text-emerald-400">All systems operating normally</p>
-                  </div>
-                ) : (
-                  recentAlerts.map((alert) => (
-                    <div key={alert.id} className="flex items-center gap-3 p-3 rounded-lg bg-background-secondary/50">
-                      <Badge variant={alert.severity === 'critical' ? 'error' : 'warning'}>{alert.severity}</Badge>
+                {(() => {
+                  // Generate client-side alerts based on device metrics
+                  const clientAlerts: {severity: string, title: string}[] = []
+
+                  if (clientMetrics.batteryLevel !== null && clientMetrics.batteryLevel <= 20) {
+                    clientAlerts.push({ severity: 'warning', title: `Low battery (${clientMetrics.batteryLevel}%)` })
+                  }
+                  if (clientMetrics.connectionType === 'slow-2g' || clientMetrics.connectionType === '2g') {
+                    clientAlerts.push({ severity: 'warning', title: `Slow network connection (${clientMetrics.connectionType})` })
+                  }
+                  if (!clientMetrics.cpuCores) {
+                    clientAlerts.push({ severity: 'info', title: 'CPU cores not detected' })
+                  }
+                  if (!clientMetrics.memoryGb) {
+                    clientAlerts.push({ severity: 'info', title: 'Memory info not available' })
+                  }
+
+                  if (clientAlerts.length === 0) {
+                    return (
+                      <div className="flex items-center gap-3 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                          <Sparkles className="w-4 h-4 text-emerald-400" />
+                        </div>
+                        <p className="text-sm text-emerald-400">Your device is running optimally</p>
+                      </div>
+                    )
+                  }
+
+                  return clientAlerts.map((alert, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-background-secondary/50">
+                      <Badge variant={alert.severity === 'warning' ? 'warning' : 'info'}>{alert.severity}</Badge>
                       <span className="flex-1 text-sm text-slate-300 truncate">{alert.title}</span>
                     </div>
                   ))
-                )}
+                })()}
               </div>
             </CardContent>
           </Card>

@@ -1,4 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
+
+export interface ClientLogEntry {
+  id: number
+  timestamp: string
+  level: 'INFO' | 'WARNING' | 'ERROR'
+  message: string
+  source: string
+}
 
 export interface ClientMetricsData {
   browser: string
@@ -14,6 +22,7 @@ export interface ClientMetricsData {
   pageLoadTime: number | null
   batteryLevel: number | null
   batteryCharging: boolean | null
+  logs: ClientLogEntry[]
 }
 
 const defaultMetrics: ClientMetricsData = {
@@ -29,7 +38,8 @@ const defaultMetrics: ClientMetricsData = {
   sessionDuration: 0,
   pageLoadTime: null,
   batteryLevel: null,
-  batteryCharging: null
+  batteryCharging: null,
+  logs: []
 }
 
 export function useClientMetrics(apiUrl?: string) {
@@ -37,6 +47,22 @@ export function useClientMetrics(apiUrl?: string) {
   const [loading, setLoading] = useState(true)
   const startTime = useRef(Date.now())
   const pageStartTime = useRef(performance.now())
+  const logIdRef = useRef(0)
+
+  // Function to add client-side log
+  const addLog = useCallback((message: string, level: 'INFO' | 'WARNING' | 'ERROR' = 'INFO', source: string = 'Client') => {
+    const newLog: ClientLogEntry = {
+      id: logIdRef.current++,
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      source
+    }
+    setMetrics(prev => ({
+      ...prev,
+      logs: [...prev.logs.slice(-49), newLog] // Keep last 50 logs
+    }))
+  }, [])
 
   const getDeviceType = (): string => {
     const ua = navigator.userAgent
@@ -156,11 +182,33 @@ export function useClientMetrics(apiUrl?: string) {
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
 
+    // Intercept console logs to capture browser logs
+    const originalConsoleLog = console.log
+    const originalConsoleWarn = console.warn
+    const originalConsoleError = console.error
+
+    console.log = (...args) => {
+      originalConsoleLog(...args)
+      addLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'INFO', 'Console')
+    }
+    console.warn = (...args) => {
+      originalConsoleWarn(...args)
+      addLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'WARNING', 'Console')
+    }
+    console.error = (...args) => {
+      originalConsoleError(...args)
+      addLog(args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), 'ERROR', 'Console')
+    }
+
     return () => {
       clearInterval(interval)
       window.removeEventListener('beforeunload', handleBeforeUnload)
+      // Restore console
+      console.log = originalConsoleLog
+      console.warn = originalConsoleWarn
+      console.error = originalConsoleError
     }
-  }, [apiUrl])
+  }, [apiUrl, addLog])
 
-  return { metrics, loading }
+  return { metrics, loading, addLog }
 }
