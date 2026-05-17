@@ -83,14 +83,16 @@ export function useClientMetrics(apiUrl?: string) {
 
   const getOS = (): string => {
     const ua = navigator.userAgent
+    // First check mobile OS (highest priority)
+    if (ua.includes('Android')) return 'Android'
+    if (ua.includes('iPhone')) return 'iOS'
+    if (ua.includes('iPad')) return 'iOS'
+    // Then check desktop OS
     if (ua.includes('Windows 11')) return 'Windows 11'
     if (ua.includes('Windows')) return 'Windows'
     if (ua.includes('Mac OS X')) return 'macOS'
     if (ua.includes('Mac')) return 'macOS'
-    if (ua.includes('Android')) return 'Android'
-    if (ua.includes('Linux')) return 'Linux'
-    if (ua.includes('iPhone')) return 'iOS'
-    if (ua.includes('iPad')) return 'iOS'
+    if (ua.includes('Linux') && !ua.includes('Android')) return 'Linux'
     return 'Other'
   }
 
