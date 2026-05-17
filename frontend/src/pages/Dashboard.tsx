@@ -7,13 +7,12 @@ import { Badge } from '@/components/ui/Badge'
 import { metricsApi } from '@/services/api'
 import { useClientMetrics } from '@/hooks/useClientMetrics'
 import { useClientLogs } from '@/hooks/useClientLogs'
-import type { Metrics, MetricsHistory } from '@/types'
+import type { Metrics } from '@/types'
 
 const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b']
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null)
-  const [history, setHistory] = useState<MetricsHistory | null>(null)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
 
@@ -37,12 +36,10 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const [metricsData, historyData] = await Promise.all([
+      const [metricsData] = await Promise.all([
         metricsApi.getMetrics(),
-        metricsApi.getHistory(),
       ])
       setMetrics(metricsData)
-      setHistory(historyData)
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
     } finally {
@@ -86,12 +83,8 @@ export default function Dashboard() {
     return () => clearInterval(interval)
   }, [clientMetrics.cpuCores])
 
-  // Use client-side data for chart
-  const chartData = clientHistory.length > 0 ? clientHistory : history?.timestamps.map((ts, i) => ({
-    time: new Date(ts).toLocaleTimeString(),
-    cpu: history.cpu_percent[i],
-    memory: history.memory_percent[i],
-  })) || []
+  // Use client-side data for chart (only client data, no server fallback)
+  const chartData = clientHistory
 
   // Client-side memory pie data
   const pieData = clientMetrics.memoryGb ? [
